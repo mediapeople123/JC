@@ -35,21 +35,42 @@ function ensureVapid() {
 
 // ── Airtable helpers ──────────────────────────────────────────────────────────
 
-/** Resolve a group's leader record ID(s) from the group's internal Group ID field. */
-async function getLeaderIdsForGroup(groupId) {
-  const { records = [] } = await findRecords(
+/**
+ * Get ALL member person record IDs for a group (by its Group ID field value).
+ * Looks up the group's Airtable record ID first, then finds all People
+ * whose linked Group field includes that record.
+ */
+async function getPersonIdsForGroup(groupId) {
+  // Step 1: find the group's Airtable record ID by its Group ID field
+  const { records: groupRecords = [] } = await findRecords(
     'Groups',
     `{Group ID} = "${sanitize(groupId)}"`,
-    ['Leader'],
+    ['Name'],
     1
   );
-  const leaderField = records[0]?.fields?.['Leader'];
-  return Array.isArray(leaderField) ? leaderField : [];
+
+  if (groupRecords.length === 0) {
+    console.warn(`[send-notification] Group not found for Group ID: "${groupId}"`);
+    return [];
+  }
+
+  const groupRecordId = groupRecords[0].id;
+  console.log(`[send-notification] Group "${groupId}" → record ${groupRecordId}`);
+
+  // Step 2: find all active people linked to this group
+  const { records: people = [] } = await findRecords(
+    'People',
+    `AND(SEARCH("${sanitize(groupRecordId)}", ARRAYJOIN({Group})), {Active})`,
+    ['Name'],
+    100
+  );
+
+  console.log(`[send-notification] Found ${people.length} members in group "${groupId}"`);
+  return people.map(r => r.id);
 }
 
 /** Get all active push subscriptions for a person (by their Airtable record ID). */
 async function getActiveSubscriptions(personRecordId) {
-  // ARRAYJOIN converts linked record IDs to a comma-separated string for SEARCH.
   const filter = `AND(
     SEARCH("${sanitize(personRecordId)}", ARRAYJOIN({Person})),
     {Active}
@@ -59,6 +80,7 @@ async function getActiveSubscriptions(personRecordId) {
     filter,
     ['Endpoint', 'P256DH', 'Auth', 'Device Name']
   );
+  console.log(`[send-notification] Person ${personRecordId} has ${records.length} active subscription(s)`);
   return records;
 }
 
@@ -104,20 +126,25 @@ async function resolvePersonIds(targetType, targetValue) {
     }
 
   } else if (targetType === 'group') {
-    const leaderIds = await getLeaderIdsForGroup(String(targetValue));
-    leaderIds.forEach(id => ids.add(id));
+    // Notify ALL members of the group (not just the leader)
+    const personIds = await getPersonIdsForGroup(String(targetValue));
+    personIds.forEach(id => ids.add(id));
 
   } else if (targetType === 'multiple_groups') {
+    // Notify ALL members across all specified groups
     const groups = Array.isArray(targetValue)
       ? targetValue
       : String(targetValue).split(',').map(s => s.trim()).filter(Boolean);
 
+    console.log(`[send-notification] Resolving ${groups.length} group(s):`, groups);
+
     for (const gId of groups) {
-      const leaderIds = await getLeaderIdsForGroup(gId);
-      leaderIds.forEach(id => ids.add(id));
+      const personIds = await getPersonIdsForGroup(gId);
+      personIds.forEach(id => ids.add(id));
     }
   }
 
+  console.log(`[send-notification] Total unique people to notify: ${ids.size}`);
   return [...ids];
 }
 
