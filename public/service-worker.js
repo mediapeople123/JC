@@ -60,6 +60,7 @@ self.addEventListener('fetch', (event) => {
 
 // ── Push ──────────────────────────────────────────────────────────────────────
 self.addEventListener('push', (event) => {
+  // iOS sometimes sends non-JSON payload — always use try/catch
   let data = {
     title: 'DG Jesus Church',
     body: 'You have a new notification.',
@@ -69,26 +70,43 @@ self.addEventListener('push', (event) => {
   try {
     if (event.data) data = { ...data, ...event.data.json() };
   } catch {
-    // If parsing fails, use defaults
+    // Fallback: use text payload as body
+    if (event.data) data.body = event.data.text();
   }
 
   const options = {
-    body:             data.body,
-    icon:             '/icon-192.png',   // add a 192×192 PNG to /public if desired
-    badge:            '/badge-96.png',   // add a 96×96 monochrome PNG if desired
-    vibrate:          [200, 100, 200],
+    body:               data.body,
+    icon:               '/icon-192.png',
+    badge:              '/icon-192.png',
+    vibrate:            [200, 100, 200],
     requireInteraction: false,
-    data:             { url: data.url },
+    data:               { url: data.url || self.location.origin },
   };
 
+  // Badging API — shows a dot/number on the app icon (iOS 16.4+, Android)
+  const badgePromise = self.navigator?.setAppBadge
+    ? self.navigator.setAppBadge(1).catch(() => {})
+    : Promise.resolve();
+
+  // CRITICAL for iOS: event.waitUntil MUST include showNotification.
+  // If a push event fires without showing a notification, iOS will
+  // eventually revoke the push subscription.
   event.waitUntil(
-    self.registration.showNotification(data.title, options)
+    Promise.all([
+      self.registration.showNotification(data.title, options),
+      badgePromise,
+    ])
   );
 });
 
 // ── Notification click ────────────────────────────────────────────────────────
 self.addEventListener('notificationclick', (event) => {
   event.notification.close();
+
+  // Clear the badge when user interacts with a notification
+  if (self.navigator?.clearAppBadge) {
+    self.navigator.clearAppBadge().catch(() => {});
+  }
 
   const targetUrl = event.notification.data?.url || self.location.origin;
 

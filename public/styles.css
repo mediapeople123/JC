@@ -91,11 +91,62 @@ main {
 }
 
 /* center these steps */
-#step-success, #step-unsupported {
+#step-success, #step-unsupported, #step-install {
   text-align: center;
 }
 #step-success > p, #step-unsupported > p {
   text-align: center;
+}
+
+/* ── iOS install prompt ─────────────────────────────────────────────────────── */
+.status-info {
+  background: var(--primary-light);
+  color: var(--primary);
+}
+
+.install-steps {
+  display: flex;
+  flex-direction: column;
+  gap: .75rem;
+  margin: 1.25rem 0;
+  text-align: left;
+}
+
+.install-step {
+  display: flex;
+  align-items: flex-start;
+  gap: .75rem;
+  font-size: .9375rem;
+  line-height: 1.4;
+}
+
+.install-num {
+  flex-shrink: 0;
+  width: 1.625rem;
+  height: 1.625rem;
+  background: var(--primary);
+  color: #fff;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: .8rem;
+  font-weight: 700;
+  margin-top: .05rem;
+}
+
+.install-note {
+  font-size: .85rem;
+  color: var(--text-muted);
+  text-align: center;
+  margin-top: .5rem;
+  padding: .625rem .875rem;
+  background: var(--primary-light);
+  border-radius: var(--radius);
+}
+
+.share-icon {
+  font-size: 1.1em;
 }
 
 /* ── Form ──────────────────────────────────────────────────────────────────── */

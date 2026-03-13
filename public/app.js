@@ -84,9 +84,25 @@ function getDeviceName() {
   return 'Browser';
 }
 
+// ── iOS detection ─────────────────────────────────────────────────────────────
+function isIOS() {
+  return /iphone|ipad/i.test(navigator.userAgent);
+}
+
+function isStandalone() {
+  return window.matchMedia('(display-mode: standalone)').matches
+    || window.navigator.standalone === true; // Safari-specific property
+}
+
 // ── Init ──────────────────────────────────────────────────────────────────────
 async function init() {
-  // Check for browser push support
+  // iOS in a browser tab: Push API is unavailable until installed on Home Screen
+  if (isIOS() && !isStandalone()) {
+    showStep('step-install');
+    return;
+  }
+
+  // All other unsupported browsers
   if (!('serviceWorker' in navigator) || !('PushManager' in window)) {
     showStep('step-unsupported');
     return;

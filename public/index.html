@@ -5,6 +5,16 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <meta name="theme-color" content="#2563eb" />
   <title>DG Jesus Church — Notifications</title>
+
+  <!-- PWA Manifest (required for iOS standalone mode + push) -->
+  <link rel="manifest" href="/manifest.json" />
+
+  <!-- iOS-specific PWA meta tags -->
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+  <meta name="apple-mobile-web-app-title" content="DG Church" />
+  <link rel="apple-touch-icon" href="/icon-192.png" />
+
   <link rel="stylesheet" href="/styles.css" />
 </head>
 <body>
@@ -70,6 +80,35 @@
         <button id="btn-reset" class="btn btn-ghost" style="margin-top:1rem;">Register Another Device</button>
       </section>
 
+      <!-- ── iOS Install Prompt ────────────────────────────────── -->
+      <section id="step-install" class="step" hidden>
+        <div class="status-icon status-info">📱</div>
+        <h2>Add to Home Screen First</h2>
+        <p>
+          To receive notifications on your iPhone, install this app on your
+          Home Screen. It only takes 30 seconds!
+        </p>
+        <div class="install-steps">
+          <div class="install-step">
+            <span class="install-num">1</span>
+            <span>Open this page in <strong>Safari</strong> (not Chrome)</span>
+          </div>
+          <div class="install-step">
+            <span class="install-num">2</span>
+            <span>Tap the <strong>Share button ⎙</strong> at the bottom of the screen</span>
+          </div>
+          <div class="install-step">
+            <span class="install-num">3</span>
+            <span>Scroll down and tap <strong>"Add to Home Screen"</strong></span>
+          </div>
+          <div class="install-step">
+            <span class="install-num">4</span>
+            <span>Tap <strong>"Add"</strong> — then open the app from your Home Screen</span>
+          </div>
+        </div>
+        <p class="install-note">After adding it, open the app from your Home Screen and come back here to enable notifications.</p>
+      </section>
+
       <!-- ── Not supported ─────────────────────────────────────── -->
       <section id="step-unsupported" class="step" hidden>
         <div class="status-icon status-warn">⚠</div>
@@ -78,9 +117,6 @@
           Push notifications require a modern browser.
           Please try <strong>Chrome</strong>, <strong>Edge</strong>, or <strong>Firefox</strong>
           on Android or desktop.
-        </p>
-        <p style="margin-top:.75rem;font-size:.875rem;">
-          Note: iOS Safari requires iOS 16.4 or later and the app must be added to your Home Screen.
         </p>
       </section>
 
