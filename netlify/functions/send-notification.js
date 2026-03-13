@@ -45,10 +45,11 @@ function ensureVapid() {
  */
 async function getPersonIdsForGroup(groupId) {
   // Step 1: find the group's Airtable record ID by its Group ID text field
+  // We don't request any specific fields — we only need the record ID.
   const { records: groupRecords = [] } = await findRecords(
     'Groups',
     `{Group ID} = "${sanitize(groupId)}"`,
-    ['Name'],
+    [],
     1
   );
 
@@ -62,10 +63,11 @@ async function getPersonIdsForGroup(groupId) {
 
   // Step 2: fetch all active people, then filter by group record ID in JS.
   // The 'Group' linked field in the API response returns an array of record IDs.
+  // We only need the Group linked field to filter — no other fields required.
   const { records: people = [] } = await findRecords(
     'People',
     `{Active}`,
-    ['Name', 'Group'],
+    ['Group'],
     500
   );
 
