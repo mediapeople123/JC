@@ -260,7 +260,15 @@ async function handleSubscribe() {
       },
     });
 
-    // 5. Show success
+    // 5. Save identity to localStorage so report.html knows who this is
+    localStorage.setItem('dg_person', JSON.stringify({
+      id:       state.selectedUser.id,
+      name:     state.selectedUser.name,
+      firstName: state.selectedUser.firstName || state.selectedUser.name.split(' ')[0] || '',
+      groupIds:  state.selectedUser.groupIds || [],
+    }));
+
+    // 6. Show success with link to dashboard
     const firstName = state.selectedUser.firstName || state.selectedUser.name;
     $('success-msg').textContent =
       `Notifications are now enabled for ${firstName} on this device.`;

@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="theme-color" content="#2563eb" />
+  <title>DG Jesus Church</title>
+  <link rel="manifest" href="/manifest.json" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+  <meta name="apple-mobile-web-app-title" content="DG Church" />
+  <link rel="apple-touch-icon" href="/icon-192.png" />
+  <link rel="stylesheet" href="/report.css" />
+</head>
+<body>
+
+  <!-- ── Not identified (no localStorage) ─────────────────────────────────── -->
+  <div id="screen-unauth" class="screen hidden">
+    <div class="unauth-wrap">
+      <div class="unauth-logo">✝</div>
+      <h1>DG Jesus Church</h1>
+      <p>You haven't registered this device yet.</p>
+      <a href="/" class="btn-primary">Set up notifications →</a>
+    </div>
+  </div>
+
+  <!-- ── Dashboard ─────────────────────────────────────────────────────────── -->
+  <div id="screen-dashboard" class="screen hidden">
+
+    <header class="app-bar">
+      <span class="app-bar-logo">✝</span>
+      <div class="app-bar-info">
+        <div class="app-bar-name" id="app-bar-name">Loading…</div>
+        <div class="app-bar-group" id="app-bar-group"></div>
+      </div>
+    </header>
+
+    <main class="dashboard-body">
+
+      <!-- Countdown -->
+      <div class="countdown-card" id="countdown-card">
+        <div class="countdown-inner">
+          <div class="countdown-number" id="countdown-number">–</div>
+          <div class="countdown-text" id="countdown-text">days until DG</div>
+        </div>
+        <div class="countdown-date" id="countdown-date"></div>
+      </div>
+
+      <!-- Stats -->
+      <div class="stats-row">
+        <div class="stat-card">
+          <div class="stat-value" id="stat-avg">–</div>
+          <div class="stat-label">avg / week</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-value" id="stat-new">–</div>
+          <div class="stat-label">new this month</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-value" id="stat-total">–</div>
+          <div class="stat-label">reports total</div>
+        </div>
+      </div>
+
+      <!-- Recent reports -->
+      <div class="section-header">Recent Reports</div>
+      <div id="reports-list" class="reports-list">
+        <div class="reports-empty">Loading…</div>
+      </div>
+
+    </main>
+
+    <!-- Floating action button -->
+    <button id="fab" class="fab" aria-label="New report" onclick="startNewReport()">+</button>
+
+  </div>
+
+  <!-- ── TypeForm ───────────────────────────────────────────────────────────── -->
+  <div id="screen-form" class="screen hidden">
+
+    <!-- Top bar -->
+    <div class="form-topbar">
+      <button class="form-back" id="form-back-btn" onclick="formBack()">←</button>
+      <div class="form-progress-track">
+        <div class="form-progress-fill" id="form-progress-fill"></div>
+      </div>
+    </div>
+
+    <!-- Steps wrapper -->
+    <div class="steps-wrap" id="steps-wrap">
+
+      <!-- Step 1: Date -->
+      <div class="form-step" id="step-date">
+        <div class="step-body">
+          <div class="step-tag">1 of 5</div>
+          <h2 class="step-q">When was your<br>DG meeting? 📅</h2>
+          <input type="date" id="input-date" class="field-date" />
+        </div>
+        <div class="step-foot">
+          <button class="btn-continue" onclick="formNext()">Continue →</button>
+        </div>
+      </div>
+
+      <!-- Step 2: Attendance -->
+      <div class="form-step" id="step-attendance">
+        <div class="step-body">
+          <div class="step-tag">2 of 5</div>
+          <h2 class="step-q">Who was present? 🙌</h2>
+          <p class="step-hint">Tap a name to mark as present</p>
+          <div id="members-grid" class="members-grid"></div>
+          <div class="present-count" id="present-count">0 present</div>
+        </div>
+        <div class="step-foot">
+          <button class="btn-continue" onclick="formNext()">Continue →</button>
+        </div>
+      </div>
+
+      <!-- Step 3: First-timers count -->
+      <div class="form-step" id="step-guests">
+        <div class="step-body">
+          <div class="step-tag">3 of 5</div>
+          <h2 class="step-q">Any first-time<br>guests? 🌟</h2>
+          <p class="step-hint">People attending DG for the very first time</p>
+          <div class="stepper">
+            <button class="stepper-btn" id="btn-minus" onclick="adjustGuests(-1)">−</button>
+            <span class="stepper-val" id="guests-val">0</span>
+            <button class="stepper-btn" id="btn-plus" onclick="adjustGuests(1)">+</button>
+          </div>
+        </div>
+        <div class="step-foot">
+          <button class="btn-continue" onclick="formNext()">Continue →</button>
+        </div>
+      </div>
+
+      <!-- Step 4: Guest details -->
+      <div class="form-step" id="step-guest-details">
+        <div class="step-body">
+          <div class="step-tag">4 of 5</div>
+          <h2 class="step-q">Tell us about<br>your guests ✨</h2>
+          <div id="guests-form" class="guests-form"></div>
+        </div>
+        <div class="step-foot">
+          <button class="btn-continue" onclick="formNext()">Continue →</button>
+        </div>
+      </div>
+
+      <!-- Step 5: Comments -->
+      <div class="form-step" id="step-comments">
+        <div class="step-body">
+          <div class="step-tag">5 of 5</div>
+          <h2 class="step-q">Any notes or<br>prayer requests? 💬</h2>
+          <p class="step-hint">Optional — share anything else from the meeting</p>
+          <textarea id="input-comments" class="field-textarea" placeholder="Write here…"></textarea>
+        </div>
+        <div class="step-foot">
+          <button class="btn-continue btn-submit" id="btn-submit" onclick="submitReport()">
+            Submit Report ✓
+          </button>
+          <button class="btn-skip" onclick="submitReport()">Skip &amp; Submit</button>
+        </div>
+      </div>
+
+      <!-- Success -->
+      <div class="form-step" id="step-success">
+        <div class="step-body success-body">
+          <div class="success-check">✓</div>
+          <h2>Report Submitted!</h2>
+          <p class="success-detail" id="success-detail"></p>
+        </div>
+        <div class="step-foot">
+          <button class="btn-continue" onclick="showDashboard()">← Back to Dashboard</button>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- Loading overlay -->
+  <div id="overlay-loading" class="overlay-loading hidden">
+    <div class="ov-spinner"></div>
+  </div>
+
+  <script src="/report.js"></script>
+</body>
+</html>

@@ -10,10 +10,10 @@
  * so updates are picked up immediately by the browser.
  */
 
-const CACHE_NAME = 'dg-church-v1';
+const CACHE_NAME = 'dg-church-v2';
 
 // Files to pre-cache on install
-const PRECACHE_URLS = ['/', '/styles.css', '/app.js'];
+const PRECACHE_URLS = ['/', '/styles.css', '/app.js', '/report', '/report.css', '/report.js'];
 
 // ── Install ───────────────────────────────────────────────────────────────────
 self.addEventListener('install', (event) => {
