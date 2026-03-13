@@ -64,6 +64,13 @@ export async function createRecord(table, fields) {
 }
 
 /**
+ * Get a single record by its Airtable record ID.
+ */
+export async function getRecord(table, recordId) {
+  return airtableRequest(`${encodeURIComponent(table)}/${recordId}`);
+}
+
+/**
  * Partially update a single record (PATCH).
  */
 export async function updateRecord(table, recordId, fields) {
