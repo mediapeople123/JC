@@ -1,0 +1,19 @@
+{
+  "name": "dg-jesus-church-notifications",
+  "version": "1.0.0",
+  "description": "Push notification system for DG Jesus Church",
+  "type": "module",
+  "scripts": {
+    "dev": "netlify dev",
+    "generate-vapid": "node -e \"import('web-push').then(m => { const keys = m.default.generateVAPIDKeys(); console.log('Public:', keys.publicKey); console.log('Private:', keys.privateKey); })\""
+  },
+  "dependencies": {
+    "web-push": "^3.6.7"
+  },
+  "devDependencies": {
+    "netlify-cli": "^17.0.0"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}

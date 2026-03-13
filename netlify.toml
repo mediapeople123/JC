@@ -1,0 +1,20 @@
+[build]
+  publish = "public"
+  functions = "netlify/functions"
+
+[functions]
+  node_bundler = "esbuild"
+
+# Map /api/* → /.netlify/functions/*
+[[redirects]]
+  from = "/api/*"
+  to = "/.netlify/functions/:splat"
+  status = 200
+
+# Service worker must be served with these headers for push to work
+[[headers]]
+  for = "/service-worker.js"
+  [headers.values]
+    Service-Worker-Allowed = "/"
+    Cache-Control = "no-cache, no-store, must-revalidate"
+    Content-Type = "application/javascript"

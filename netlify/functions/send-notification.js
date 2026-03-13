@@ -1,0 +1,213 @@
+/**
+ * POST /api/send-notification
+ *
+ * Receives a webhook from Airtable Automations, resolves the target
+ * (group leader or specific person), fetches their active device
+ * subscriptions, and sends the push notification via web-push.
+ *
+ * Security: validated by X-Webhook-Secret header.
+ *
+ * Expected body:
+ * {
+ *   title:       string,
+ *   body:        string,
+ *   targetType:  "group" | "person" | "multiple_groups",
+ *   targetValue: string | string[],   // group ID, person record ID / email, or array of group IDs
+ *   url:         string               // optional — URL to open on notification click
+ * }
+ */
+import webpush from 'web-push';
+import { findRecords, createRecord, updateRecord, sanitize } from './_airtable.js';
+
+// ── VAPID setup ───────────────────────────────────────────────────────────────
+// Done lazily so cold-start errors are surfaced clearly in logs.
+let vapidReady = false;
+function ensureVapid() {
+  if (vapidReady) return;
+  const siteUrl = process.env.SITE_URL || 'https://example.netlify.app';
+  webpush.setVapidDetails(
+    `mailto:admin@${new URL(siteUrl).hostname}`,
+    process.env.VAPID_PUBLIC_KEY,
+    process.env.VAPID_PRIVATE_KEY
+  );
+  vapidReady = true;
+}
+
+// ── Airtable helpers ──────────────────────────────────────────────────────────
+
+/** Resolve a group's leader record ID(s) from the group's internal Group ID field. */
+async function getLeaderIdsForGroup(groupId) {
+  const { records = [] } = await findRecords(
+    'Groups',
+    `{Group ID} = "${sanitize(groupId)}"`,
+    ['Leader'],
+    1
+  );
+  const leaderField = records[0]?.fields?.['Leader'];
+  return Array.isArray(leaderField) ? leaderField : [];
+}
+
+/** Get all active push subscriptions for a person (by their Airtable record ID). */
+async function getActiveSubscriptions(personRecordId) {
+  // ARRAYJOIN converts linked record IDs to a comma-separated string for SEARCH.
+  const filter = `AND(
+    SEARCH("${sanitize(personRecordId)}", ARRAYJOIN({Person})),
+    {Active}
+  )`;
+  const { records = [] } = await findRecords(
+    'Subscriptions',
+    filter,
+    ['Endpoint', 'P256DH', 'Auth', 'Device Name']
+  );
+  return records;
+}
+
+/** Send a single push notification; mark subscription inactive if it has expired. */
+async function sendPush(subRecord, payload) {
+  const pushSub = {
+    endpoint: subRecord.fields['Endpoint'],
+    keys: {
+      p256dh: subRecord.fields['P256DH'],
+      auth: subRecord.fields['Auth'],
+    },
+  };
+
+  try {
+    await webpush.sendNotification(pushSub, JSON.stringify(payload), { TTL: 3600 });
+    return { success: true };
+  } catch (err) {
+    // 410 Gone / 404 Not Found → subscription is no longer valid
+    if (err.statusCode === 410 || err.statusCode === 404) {
+      await updateRecord('Subscriptions', subRecord.id, { Active: false }).catch(() => {});
+      return { success: false, expired: true };
+    }
+    console.error('[send-notification] push error', err.statusCode, err.body);
+    return { success: false, error: String(err.message || err.body || 'Unknown push error') };
+  }
+}
+
+/** Resolve targetType + targetValue to a deduplicated list of person record IDs. */
+async function resolvePersonIds(targetType, targetValue) {
+  const ids = new Set();
+
+  if (targetType === 'person') {
+    if (String(targetValue).startsWith('rec')) {
+      // Airtable record ID provided directly
+      ids.add(targetValue);
+    } else {
+      // Treat as email address
+      const { records = [] } = await findRecords(
+        'People',
+        `LOWER({Email}) = LOWER("${sanitize(targetValue)}")`
+      );
+      records.forEach(r => ids.add(r.id));
+    }
+
+  } else if (targetType === 'group') {
+    const leaderIds = await getLeaderIdsForGroup(String(targetValue));
+    leaderIds.forEach(id => ids.add(id));
+
+  } else if (targetType === 'multiple_groups') {
+    const groups = Array.isArray(targetValue)
+      ? targetValue
+      : String(targetValue).split(',').map(s => s.trim()).filter(Boolean);
+
+    for (const gId of groups) {
+      const leaderIds = await getLeaderIdsForGroup(gId);
+      leaderIds.forEach(id => ids.add(id));
+    }
+  }
+
+  return [...ids];
+}
+
+// ── Handler ───────────────────────────────────────────────────────────────────
+export const handler = async (event) => {
+  if (event.httpMethod !== 'POST') {
+    return { statusCode: 405, body: 'Method Not Allowed' };
+  }
+
+  // Validate webhook secret
+  const providedSecret = event.headers['x-webhook-secret'] || event.headers['X-Webhook-Secret'];
+  if (!providedSecret || providedSecret !== process.env.WEBHOOK_SECRET) {
+    console.warn('[send-notification] Rejected — bad webhook secret');
+    return { statusCode: 401, body: JSON.stringify({ error: 'Unauthorized' }) };
+  }
+
+  let parsed;
+  try {
+    parsed = JSON.parse(event.body || '{}');
+  } catch {
+    return { statusCode: 400, body: JSON.stringify({ error: 'Invalid JSON body.' }) };
+  }
+
+  const { title, body, targetType, targetValue, url } = parsed;
+
+  if (!title || !targetType || targetValue == null) {
+    return {
+      statusCode: 400,
+      body: JSON.stringify({ error: 'title, targetType, and targetValue are required.' }),
+    };
+  }
+
+  ensureVapid();
+
+  const payload = {
+    title,
+    body: body || '',
+    url: url || process.env.SITE_URL || '',
+  };
+
+  let sentCount = 0;
+  let failCount = 0;
+  const errors = [];
+
+  try {
+    const personIds = await resolvePersonIds(targetType, targetValue);
+
+    if (personIds.length === 0) {
+      console.warn('[send-notification] No targets resolved for', targetType, targetValue);
+      return {
+        statusCode: 200,
+        body: JSON.stringify({ sent: 0, failed: 0, message: 'No targets found.' }),
+      };
+    }
+
+    for (const personId of personIds) {
+      const subs = await getActiveSubscriptions(personId);
+      for (const sub of subs) {
+        const result = await sendPush(sub, payload);
+        if (result.success) sentCount++;
+        else {
+          failCount++;
+          if (result.error) errors.push(result.error);
+        }
+      }
+    }
+
+    // Log to Notifications table for audit trail
+    await createRecord('Notifications', {
+      Title: title,
+      Body: body || '',
+      'Target Type': targetType,
+      'Target Value': Array.isArray(targetValue) ? targetValue.join(', ') : String(targetValue),
+      URL: url || process.env.SITE_URL || '',
+      Status: failCount === 0 ? 'Sent' : sentCount === 0 ? 'Failed' : 'Partial',
+      'Sent At': new Date().toISOString(),
+      'Sent Count': sentCount,
+      'Error Log': errors.slice(0, 5).join('\n'),
+    }).catch(e => console.error('[send-notification] Failed to log:', e.message));
+
+    return {
+      statusCode: 200,
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ sent: sentCount, failed: failCount }),
+    };
+  } catch (err) {
+    console.error('[send-notification] Unexpected error:', err.message);
+    return {
+      statusCode: 500,
+      body: JSON.stringify({ error: err.message }),
+    };
+  }
+};

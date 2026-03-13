@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="theme-color" content="#2563eb" />
+  <title>DG Jesus Church — Notifications</title>
+  <link rel="stylesheet" href="/styles.css" />
+</head>
+<body>
+  <div id="app">
+
+    <header>
+      <div class="logo">✝</div>
+      <h1>DG Jesus Church</h1>
+      <p class="subtitle">Push Notification Registration</p>
+    </header>
+
+    <main>
+
+      <!-- ── Step 1: Search ────────────────────────────────────── -->
+      <section id="step-search" class="step active">
+        <h2>Find Your Account</h2>
+        <p>Enter your email address or full name to get started.</p>
+
+        <div class="form-group">
+          <label for="search-input">Email or Name</label>
+          <input
+            type="text"
+            id="search-input"
+            placeholder="e.g. john@church.org or John Doe"
+            autocomplete="off"
+            autocapitalize="words"
+          />
+        </div>
+
+        <button id="btn-search" class="btn btn-primary">Search</button>
+        <div id="search-error" class="alert alert-error" hidden></div>
+      </section>
+
+      <!-- ── Step 2: Confirm identity ──────────────────────────── -->
+      <section id="step-confirm" class="step" hidden>
+        <h2>Select Your Name</h2>
+        <p>Multiple matches found. Please tap your name below.</p>
+        <div id="user-list"></div>
+        <button id="btn-back" class="btn btn-ghost">← Search Again</button>
+      </section>
+
+      <!-- ── Step 3: Enable notifications ─────────────────────── -->
+      <section id="step-subscribe" class="step" hidden>
+        <h2>Enable Notifications</h2>
+
+        <div id="user-confirmed" class="person-card"></div>
+
+        <p>Tap the button to allow notifications on this device. You will be asked for permission by your browser.</p>
+
+        <button id="btn-subscribe" class="btn btn-primary">
+          <span class="btn-icon">🔔</span> Enable Notifications
+        </button>
+        <div id="subscribe-error" class="alert alert-error" hidden></div>
+
+        <button id="btn-back2" class="btn btn-ghost">← Not Me</button>
+      </section>
+
+      <!-- ── Step 4: Success ───────────────────────────────────── -->
+      <section id="step-success" class="step" hidden>
+        <div class="status-icon status-success">✓</div>
+        <h2>You're All Set!</h2>
+        <p id="success-msg">Notifications have been enabled on this device.</p>
+        <button id="btn-reset" class="btn btn-ghost" style="margin-top:1rem;">Register Another Device</button>
+      </section>
+
+      <!-- ── Not supported ─────────────────────────────────────── -->
+      <section id="step-unsupported" class="step" hidden>
+        <div class="status-icon status-warn">⚠</div>
+        <h2>Browser Not Supported</h2>
+        <p>
+          Push notifications require a modern browser.
+          Please try <strong>Chrome</strong>, <strong>Edge</strong>, or <strong>Firefox</strong>
+          on Android or desktop.
+        </p>
+        <p style="margin-top:.75rem;font-size:.875rem;">
+          Note: iOS Safari requires iOS 16.4 or later and the app must be added to your Home Screen.
+        </p>
+      </section>
+
+    </main>
+
+    <footer>
+      <p>Your subscription is saved securely and only used to send you church notifications.</p>
+    </footer>
+
+  </div>
+
+  <script src="/app.js"></script>
+</body>
+</html>
