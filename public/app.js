@@ -96,6 +96,15 @@ function isStandalone() {
 
 // ── Init ──────────────────────────────────────────────────────────────────────
 async function init() {
+  // Already registered → go straight to the dashboard.
+  // Add ?register=1 to the URL to force re-registration on a new device.
+  const alreadyRegistered = localStorage.getItem('dg_person');
+  const forceRegister = new URLSearchParams(location.search).get('register') === '1';
+  if (alreadyRegistered && !forceRegister) {
+    window.location.href = '/report';
+    return;
+  }
+
   // iOS in a browser tab: Push API is unavailable until installed on Home Screen
   if (isIOS() && !isStandalone()) {
     showStep('step-install');
