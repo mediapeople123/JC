@@ -37,11 +37,14 @@ function ensureVapid() {
 
 /**
  * Get ALL member person record IDs for a group (by its Group ID field value).
- * Looks up the group's Airtable record ID first, then finds all People
- * whose linked Group field includes that record.
+ *
+ * IMPORTANT: ARRAYJOIN({LinkedField}) in Airtable filter formulas returns
+ * display names, not record IDs. We therefore fetch active people with their
+ * Group field and filter by record ID in JavaScript, where linked fields are
+ * correctly returned as arrays of record IDs.
  */
 async function getPersonIdsForGroup(groupId) {
-  // Step 1: find the group's Airtable record ID by its Group ID field
+  // Step 1: find the group's Airtable record ID by its Group ID text field
   const { records: groupRecords = [] } = await findRecords(
     'Groups',
     `{Group ID} = "${sanitize(groupId)}"`,
@@ -57,31 +60,43 @@ async function getPersonIdsForGroup(groupId) {
   const groupRecordId = groupRecords[0].id;
   console.log(`[send-notification] Group "${groupId}" → record ${groupRecordId}`);
 
-  // Step 2: find all active people linked to this group
+  // Step 2: fetch all active people, then filter by group record ID in JS.
+  // The 'Group' linked field in the API response returns an array of record IDs.
   const { records: people = [] } = await findRecords(
     'People',
-    `AND(SEARCH("${sanitize(groupRecordId)}", ARRAYJOIN({Group})), {Active})`,
-    ['Name'],
-    100
+    `{Active}`,
+    ['Name', 'Group'],
+    500
   );
 
-  console.log(`[send-notification] Found ${people.length} members in group "${groupId}"`);
-  return people.map(r => r.id);
+  const matched = people.filter(r =>
+    Array.isArray(r.fields['Group']) && r.fields['Group'].includes(groupRecordId)
+  );
+
+  console.log(`[send-notification] Found ${matched.length} members in group "${groupId}"`);
+  return matched.map(r => r.id);
 }
 
-/** Get all active push subscriptions for a person (by their Airtable record ID). */
+/**
+ * Get all active push subscriptions for a person (by their Airtable record ID).
+ *
+ * Same linked-field caveat: fetch all active subscriptions and filter by
+ * Person record ID in JavaScript rather than in the Airtable formula.
+ */
 async function getActiveSubscriptions(personRecordId) {
-  const filter = `AND(
-    SEARCH("${sanitize(personRecordId)}", ARRAYJOIN({Person})),
-    {Active}
-  )`;
   const { records = [] } = await findRecords(
     'Subscriptions',
-    filter,
-    ['Endpoint', 'P256DH', 'Auth', 'Device Name']
+    `{Active}`,
+    ['Endpoint', 'P256DH', 'Auth', 'Device Name', 'Person'],
+    500
   );
-  console.log(`[send-notification] Person ${personRecordId} has ${records.length} active subscription(s)`);
-  return records;
+
+  const matched = records.filter(r =>
+    Array.isArray(r.fields['Person']) && r.fields['Person'].includes(personRecordId)
+  );
+
+  console.log(`[send-notification] Person ${personRecordId} has ${matched.length} active subscription(s)`);
+  return matched;
 }
 
 /** Send a single push notification; mark subscription inactive if it has expired. */
