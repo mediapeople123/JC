@@ -40,23 +40,33 @@ export const handler = async (event) => {
       'My Group';
     const groupId = group.fields['Group ID'] || '';
 
-    // 3. Fetch all active people, filter by this group in JS
-    // (ARRAYJOIN in Airtable formulas returns display names, not record IDs)
+    // 3. Fetch ALL people (no formula filter — avoids {Active} checkbox pitfalls),
+    //    then filter by group record ID and active status in JavaScript.
+    //    Only request Name + Group to avoid 422 on optional fields like 'First Name'.
     const { records: allPeople = [] } = await findRecords(
       'People',
-      `{Active}`,
-      ['Name', 'First Name', 'Group'],
+      `NOT({Name} = "")`,
+      ['Name', 'Group', 'Active'],
       500
     );
 
     const members = allPeople
-      .filter(r => Array.isArray(r.fields['Group']) && r.fields['Group'].includes(groupRecordId))
-      .map(r => ({
-        id: r.id,
-        name: r.fields['Name'] || '',
-        firstName: r.fields['First Name'] || (r.fields['Name'] || '').split(' ')[0] || '',
-      }))
+      .filter(r =>
+        r.fields['Active'] !== false &&
+        Array.isArray(r.fields['Group']) &&
+        r.fields['Group'].includes(groupRecordId)
+      )
+      .map(r => {
+        const name = r.fields['Name'] || '';
+        return {
+          id: r.id,
+          name,
+          firstName: name.split(' ')[0] || name,
+        };
+      })
       .sort((a, b) => a.name.localeCompare(b.name));
+
+    console.log(`[get-group-members] Found ${members.length} members for group ${groupRecordId}`);
 
     return {
       statusCode: 200,
