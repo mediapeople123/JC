@@ -62,7 +62,7 @@ export const handler = async (event) => {
     console.error('[find-user]', err.message);
     return {
       statusCode: 500,
-      body: JSON.stringify({ error: 'Search failed. Please try again.' }),
+      body: JSON.stringify({ error: err.message }), // temporary: expose real error for debugging
     };
   }
 };
