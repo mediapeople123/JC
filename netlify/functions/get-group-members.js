@@ -50,6 +50,8 @@ export const handler = async (event) => {
       500
     );
 
+    console.log(`[get-group-members] Fetched ${allPeople.length} people, matching group ${groupRecordId}`);
+
     const members = allPeople
       .filter(r =>
         r.fields['Active'] !== false &&

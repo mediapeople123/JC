@@ -10,22 +10,29 @@ export const handler = async (event) => {
     return { statusCode: 405, body: 'Method Not Allowed' };
   }
 
-  const { groupRecordId } = event.queryStringParameters || {};
-  if (!groupRecordId) {
-    return { statusCode: 400, body: JSON.stringify({ error: 'groupRecordId required' }) };
+  const { groupRecordId, personId } = event.queryStringParameters || {};
+  if (!groupRecordId && !personId) {
+    return { statusCode: 400, body: JSON.stringify({ error: 'groupRecordId or personId required' }) };
   }
 
   try {
-    // Fetch recent reports — filter by group in JS (ARRAYJOIN linked-field issue)
+    // Fetch recent reports — filter in JS (ARRAYJOIN linked-field issue)
+    // Request Leader field too so we can fallback-filter by leader when Group isn't linked
     const { records = [] } = await findRecords(
       'Reports',
       `NOT({Date} = "")`,
-      ['Date', 'Present Count', 'First Timer Count', 'First Timers', 'Comments', 'Group'],
+      ['Date', 'Present Count', 'First Timer Count', 'First Timers', 'Comments', 'Group', 'Leader'],
       200
     );
 
     const groupReports = records
-      .filter(r => Array.isArray(r.fields['Group']) && r.fields['Group'].includes(groupRecordId))
+      .filter(r => {
+        // Primary: match by Group record ID
+        if (groupRecordId && Array.isArray(r.fields['Group']) && r.fields['Group'].includes(groupRecordId)) return true;
+        // Fallback: match by Leader record ID (catches reports submitted before Group linking was added)
+        if (personId && Array.isArray(r.fields['Leader']) && r.fields['Leader'].includes(personId)) return true;
+        return false;
+      })
       .map(r => ({
         id: r.id,
         date: r.fields['Date'] || '',
