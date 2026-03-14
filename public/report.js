@@ -202,6 +202,34 @@ function renderStats(reports) {
   $('stat-total').textContent = reports.length;
 }
 
+function buildReportDetail(r) {
+  const guestChips = r.firstTimerCount > 0 && Array.isArray(r.firstTimers) && r.firstTimers.length
+    ? r.firstTimers.map(g =>
+        `<span class="rexp-chip">🌟 ${esc(g.name)}${g.surname ? ' ' + esc(g.surname) : ''}${g.gender ? ' <span class="rexp-chip-gender">('+esc(g.gender)+')</span>' : ''}</span>`
+      ).join('')
+    : r.firstTimerCount > 0
+      ? `<span class="rexp-chip">🌟 ${r.firstTimerCount} guest${r.firstTimerCount > 1 ? 's' : ''}</span>`
+      : '';
+
+  return `
+    <div class="rexp-body">
+      <div class="rexp-row">
+        <span class="rexp-label">Present</span>
+        <span class="rexp-val">${r.presentCount} member${r.presentCount !== 1 ? 's' : ''}</span>
+      </div>
+      ${guestChips ? `
+      <div class="rexp-row rexp-row--guests">
+        <span class="rexp-label">First-timers</span>
+        <div class="rexp-chips">${guestChips}</div>
+      </div>` : ''}
+      ${r.comments ? `
+      <div class="rexp-row rexp-row--notes">
+        <span class="rexp-label">Notes</span>
+        <span class="rexp-notes">${esc(r.comments)}</span>
+      </div>` : ''}
+    </div>`;
+}
+
 function renderReports(reports) {
   const list = $('reports-list');
   if (!reports.length) {
@@ -219,76 +247,56 @@ function renderReports(reports) {
       ? `<span class="report-badge has-guests">${r.presentCount} + ${r.firstTimerCount} new 🌟</span>`
       : `<span class="report-badge">${r.presentCount} present</span>`;
 
-    const guestNames = hasGuests && Array.isArray(r.firstTimers) && r.firstTimers.length
-      ? r.firstTimers.map(g => g.name).filter(Boolean).join(', ')
-      : '';
-
     return `
-      <div class="report-row" onclick="openReportSheet(${i})" tabindex="0" role="button" aria-label="View report for ${formatDateShort(r.date)}">
-        <div class="report-row-left">
-          <div class="report-date">${formatDateShort(r.date)}</div>
-          ${guestNames ? `<div class="report-meta">Guests: ${esc(guestNames)}</div>` : ''}
-          ${r.comments ? `<div class="report-meta">${esc(r.comments.substring(0,55))}${r.comments.length>55?'…':''}</div>` : ''}
+      <div class="report-row" id="report-row-${i}" onclick="toggleReport(${i})" tabindex="0" role="button" aria-expanded="false">
+        <div class="report-row-top">
+          <div class="report-row-left">
+            <div class="report-date">${formatDateShort(r.date)}</div>
+          </div>
+          <div class="report-row-right">
+            ${badge}
+            <span class="report-chevron">›</span>
+          </div>
         </div>
-        <div class="report-row-right">
-          ${badge}
-          <span class="report-chevron">›</span>
+        <div class="report-expand" id="report-expand-${i}">
+          ${buildReportDetail(r)}
         </div>
       </div>`;
   }).join('');
 }
 
-// ── Report detail sheet ────────────────────────────────────────────────────────
-window.openReportSheet = function(index) {
-  const r = state.reports[index];
-  if (!r) return;
+// ── Inline accordion ───────────────────────────────────────────────────────────
+let openReportIndex = null;
 
-  $('sheet-title').textContent = `Report – ${formatDate(r.date)}`;
+window.toggleReport = function(index) {
+  const row    = $(`report-row-${index}`);
+  const expand = $(`report-expand-${index}`);
+  if (!row || !expand) return;
 
-  const guestRows = r.firstTimerCount > 0 ? `
-    <div class="sheet-detail-row">
-      <span class="sheet-detail-label">First-timers</span>
-      <div class="sheet-detail-value">
-        ${Array.isArray(r.firstTimers) && r.firstTimers.length
-          ? `<div class="sheet-guests-wrap">${r.firstTimers.map(g => `
-              <span class="sheet-guest-chip">
-                🌟 ${esc(g.name)}${g.surname ? ' ' + esc(g.surname) : ''}
-                ${g.gender ? `<span style="opacity:.6;font-size:.72rem">(${esc(g.gender)})</span>` : ''}
-              </span>`).join('')}</div>`
-          : r.firstTimerCount + ' guest(s)'
-        }
-      </div>
-    </div>` : '';
+  const isOpen = row.classList.contains('expanded');
 
-  const commentsRow = r.comments ? `
-    <div class="sheet-detail-row" style="flex-direction:column;gap:.5rem;">
-      <span class="sheet-detail-label">Notes &amp; Prayer Requests</span>
-      <div class="sheet-comments-block">${esc(r.comments)}</div>
-    </div>` : '';
+  // Close any previously open row
+  if (openReportIndex !== null && openReportIndex !== index) {
+    const prevRow    = $(`report-row-${openReportIndex}`);
+    const prevExpand = $(`report-expand-${openReportIndex}`);
+    if (prevRow)    { prevRow.classList.remove('expanded'); prevRow.setAttribute('aria-expanded', 'false'); }
+    if (prevExpand) { prevExpand.style.maxHeight = '0'; prevExpand.style.opacity = '0'; }
+  }
 
-  $('sheet-body').innerHTML = `
-    <div class="sheet-detail-row">
-      <span class="sheet-detail-label">Date</span>
-      <span class="sheet-detail-value">${formatDate(r.date)}</span>
-    </div>
-    <div class="sheet-detail-row">
-      <span class="sheet-detail-label">Present</span>
-      <span class="sheet-detail-value">${r.presentCount} member${r.presentCount !== 1 ? 's' : ''}</span>
-    </div>
-    ${guestRows}
-    ${commentsRow}
-  `;
-
-  show('report-sheet-overlay');
-  show('report-sheet');
-  // Prevent body scroll
-  document.body.style.overflow = 'hidden';
-};
-
-window.closeReportSheet = function() {
-  hide('report-sheet-overlay');
-  hide('report-sheet');
-  document.body.style.overflow = '';
+  if (isOpen) {
+    row.classList.remove('expanded');
+    row.setAttribute('aria-expanded', 'false');
+    expand.style.maxHeight = '0';
+    expand.style.opacity   = '0';
+    openReportIndex = null;
+  } else {
+    row.classList.add('expanded');
+    row.setAttribute('aria-expanded', 'true');
+    expand.style.maxHeight = expand.scrollHeight + 32 + 'px';
+    expand.style.opacity   = '1';
+    openReportIndex = index;
+    setTimeout(() => row.scrollIntoView({ behavior: 'smooth', block: 'nearest' }), 100);
+  }
 };
 
 
