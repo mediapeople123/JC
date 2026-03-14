@@ -199,7 +199,7 @@ export const handler = async (event) => {
   const payload = {
     title,
     body: body || '',
-    url: url || process.env.SITE_URL || '',
+    url: url || ((process.env.SITE_URL || '') + '/report'),
   };
 
   let sentCount = 0;
