@@ -93,30 +93,6 @@ function todayISO() {
   return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
 }
 
-// ── Overdue detection ──────────────────────────────────────────────────────────
-/**
- * Returns true if the leader has not submitted a report since the most recent Tuesday
- * AND today is not Tuesday (Tue is submission day — give them the day).
- */
-function isReportOverdue(reports) {
-  const today = new Date();
-  const day = today.getDay();
-
-  // Don't show overdue on Tuesday itself
-  if (day === 2) return false;
-
-  const cutoff = lastTuesdayISO();
-  const hasRecentReport = reports.some(r => r.date >= cutoff);
-  return !hasRecentReport;
-}
-
-function renderOverdueBanner(reports) {
-  if (isReportOverdue(reports)) {
-    show('overdue-banner');
-  } else {
-    hide('overdue-banner');
-  }
-}
 
 // ── Init ───────────────────────────────────────────────────────────────────────
 async function init() {
@@ -137,10 +113,6 @@ async function init() {
   show('screen-dashboard');
   renderHeader();
   renderCountdown();
-
-  // Wire up ask-leader button
-  const askBtn = $('ask-btn');
-  if (askBtn) askBtn.addEventListener('click', openAskSheet);
 
   // Load group + reports in parallel
   loading(true);
@@ -207,7 +179,6 @@ async function loadReports(groupRecordId) {
     state.reports = reports || [];
     renderReports(state.reports);
     renderStats(state.reports);
-    renderOverdueBanner(state.reports);
   } catch (err) {
     console.error('[loadReports]', err.message);
     renderReports([]);
@@ -320,68 +291,6 @@ window.closeReportSheet = function() {
   document.body.style.overflow = '';
 };
 
-// ── Ask leader sheet ───────────────────────────────────────────────────────────
-function openAskSheet() {
-  $('ask-message').value = '';
-  hide('ask-error');
-  hide('ask-success');
-  const btn = $('btn-ask-send');
-  btn.disabled = false;
-  btn.textContent = 'Send Message 🙏';
-  show('ask-sheet-overlay');
-  show('ask-sheet');
-  document.body.style.overflow = 'hidden';
-  setTimeout(() => $('ask-message').focus(), 300);
-}
-
-window.closeAskSheet = function() {
-  hide('ask-sheet-overlay');
-  hide('ask-sheet');
-  document.body.style.overflow = '';
-};
-
-window.sendAskLeader = async function() {
-  const message = $('ask-message').value.trim();
-  hide('ask-error');
-
-  if (!message) {
-    show('ask-error');
-    $('ask-error').textContent = 'Please write a message before sending.';
-    return;
-  }
-
-  const btn = $('btn-ask-send');
-  btn.disabled = true;
-  btn.textContent = 'Sending…';
-
-  try {
-    await api('ask-leader', {
-      method: 'POST',
-      body: {
-        personId:     state.person?.id || '',
-        personName:   state.person?.name || '',
-        groupName:    state.group?.groupName || '',
-        groupRecordId: state.group?.groupRecordId || '',
-        message,
-      },
-    });
-
-    hide('btn-ask-send');
-    show('ask-success');
-
-    // Auto-close after 2s
-    setTimeout(() => {
-      closeAskSheet();
-      setTimeout(() => show('btn-ask-send'), 500);
-    }, 2000);
-
-  } catch (err) {
-    btn.disabled = false;
-    btn.textContent = 'Send Message 🙏';
-    show('ask-error');
-    $('ask-error').textContent = err.message || 'Could not send. Please try again.';
-  }
-};
 
 // ── Start new report ───────────────────────────────────────────────────────────
 function startNewReport() {
