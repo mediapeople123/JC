@@ -3,11 +3,11 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
-  <meta name="theme-color" content="#2563eb" />
+  <meta name="theme-color" content="#0a0a18" />
   <title>DG Jesus Church</title>
   <link rel="manifest" href="/manifest.json" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
-  <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
   <meta name="apple-mobile-web-app-title" content="DG Church" />
   <link rel="apple-touch-icon" href="/icon-192.png" />
   <link rel="stylesheet" href="/report.css" />
@@ -33,9 +33,27 @@
         <div class="app-bar-name" id="app-bar-name">Loading…</div>
         <div class="app-bar-group" id="app-bar-group"></div>
       </div>
+      <!-- Ask leader button -->
+      <button class="ask-btn" id="ask-btn" aria-label="Send a question to your leader" title="Ask your leader">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
+        </svg>
+      </button>
     </header>
 
     <main class="dashboard-body">
+
+      <!-- Overdue banner (hidden until needed) -->
+      <div id="overdue-banner" class="overdue-banner hidden">
+        <div class="overdue-inner">
+          <span class="overdue-icon">⚠️</span>
+          <div class="overdue-text">
+            <div class="overdue-title">Report overdue</div>
+            <div class="overdue-sub">Your Tuesday report hasn't been submitted yet</div>
+          </div>
+        </div>
+        <button class="overdue-action" onclick="startNewReport()">Submit now →</button>
+      </div>
 
       <!-- Countdown -->
       <div class="countdown-card" id="countdown-card">
@@ -65,7 +83,10 @@
       <!-- Recent reports -->
       <div class="section-header">Recent Reports</div>
       <div id="reports-list" class="reports-list">
-        <div class="reports-empty">Loading…</div>
+        <div class="reports-empty">
+          <div class="reports-empty-icon">📋</div>
+          <div>Loading reports…</div>
+        </div>
       </div>
 
     </main>
@@ -84,6 +105,8 @@
       <div class="form-progress-track">
         <div class="form-progress-fill" id="form-progress-fill"></div>
       </div>
+      <!-- Close / exit button - always visible -->
+      <button class="form-close" id="form-close-btn" onclick="exitForm()" aria-label="Exit form" title="Exit without saving">✕</button>
     </div>
 
     <!-- Steps wrapper -->
@@ -172,6 +195,38 @@
         </div>
       </div>
 
+    </div>
+  </div>
+
+  <!-- ── Report Detail Bottom Sheet ───────────────────────────────────────── -->
+  <div id="report-sheet-overlay" class="sheet-overlay hidden" onclick="closeReportSheet()"></div>
+  <div id="report-sheet" class="report-sheet hidden">
+    <div class="sheet-handle"></div>
+    <div class="sheet-header">
+      <div class="sheet-title" id="sheet-title">Report Details</div>
+      <button class="sheet-close" onclick="closeReportSheet()">✕</button>
+    </div>
+    <div class="sheet-body" id="sheet-body"></div>
+  </div>
+
+  <!-- ── Ask Leader Bottom Sheet ───────────────────────────────────────────── -->
+  <div id="ask-sheet-overlay" class="sheet-overlay hidden" onclick="closeAskSheet()"></div>
+  <div id="ask-sheet" class="ask-sheet hidden">
+    <div class="sheet-handle"></div>
+    <div class="sheet-header">
+      <div class="sheet-title">💬 Ask your leader</div>
+      <button class="sheet-close" onclick="closeAskSheet()">✕</button>
+    </div>
+    <div class="ask-sheet-body">
+      <p class="ask-hint">Send a question, prayer request, or anything you'd like your leader to know.</p>
+      <textarea id="ask-message" class="field-textarea ask-textarea" placeholder="Type your message here…" rows="4"></textarea>
+      <div id="ask-error" class="ask-error hidden"></div>
+      <button class="btn-continue btn-ask-send" id="btn-ask-send" onclick="sendAskLeader()">
+        Send Message 🙏
+      </button>
+      <div id="ask-success" class="ask-success hidden">
+        <span>✓ Message sent to your leader</span>
+      </div>
     </div>
   </div>
 
