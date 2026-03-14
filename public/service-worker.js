@@ -63,8 +63,8 @@ self.addEventListener('push', (event) => {
   // iOS sometimes sends non-JSON payload — always use try/catch
   let data = {
     title: 'DG Jesus Church',
-    body: 'You have a new notification.',
-    url: self.location.origin,
+    body: "It's time to submit your DG report!",
+    url: self.location.origin + '/report',
   };
 
   try {
