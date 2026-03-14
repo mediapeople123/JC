@@ -2,6 +2,7 @@
  * POST /api/submit-report
  *
  * Saves a DG attendance report to the Reports table in Airtable.
+ * Also creates People records for any first-time guests and links them to the group.
  *
  * Expected body:
  * {
@@ -14,7 +15,7 @@
  *   comments:       string
  * }
  */
-import { createRecord } from './_airtable.js';
+import { createRecord, findRecords } from './_airtable.js';
 
 export const handler = async (event) => {
   if (event.httpMethod !== 'POST') {
@@ -53,10 +54,47 @@ export const handler = async (event) => {
 
     const record = await createRecord('Reports', fields);
 
+    // ── Create People records for first-time guests ─────────────────────────
+    // For each named first-timer, add them to the People table and link to the group.
+    const newPeopleIds = [];
+    if (Array.isArray(firstTimers) && firstTimers.length > 0) {
+      for (const guest of firstTimers) {
+        const firstName = (guest.name || '').trim();
+        if (!firstName) continue; // skip nameless entries
+
+        const fullName = guest.surname
+          ? `${firstName} ${guest.surname.trim()}`
+          : firstName;
+
+        try {
+          const personFields = {
+            'Name': fullName,
+            'Active': true,
+            'New Guest': true,
+          };
+
+          if (groupRecordId) {
+            personFields['Group'] = [groupRecordId];
+          }
+
+          if (guest.gender && ['Male', 'Female', 'Other'].includes(guest.gender)) {
+            personFields['Gender'] = guest.gender;
+          }
+
+          const newPerson = await createRecord('People', personFields);
+          newPeopleIds.push(newPerson.id);
+          console.log(`[submit-report] Created People record for "${fullName}" → ${newPerson.id}`);
+        } catch (personErr) {
+          // Don't fail the whole submission if People creation fails
+          console.error(`[submit-report] Could not create People record for "${fullName}":`, personErr.message);
+        }
+      }
+    }
+
     return {
       statusCode: 200,
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ id: record.id }),
+      body: JSON.stringify({ id: record.id, newPeopleIds }),
     };
   } catch (err) {
     console.error('[submit-report]', err.message);
